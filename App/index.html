@@ -1,0 +1,130 @@
+<!-- Côté client -->
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <style>
+     body{
+        margin-top: 30px;
+      }
+      #messageArea{
+        display:none;
+      }
+      .chat .well{
+        background: #00f;
+        color: #fff;
+      }
+   
+
+    </style>
+  </head>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+  <body>
+     <div class="container">
+      <div id="userFormArea" class="row">
+        <div class="col-md-12">
+          <form id="userForm">
+            <div class="form-group">
+              <label>Enter username</label>
+              <input class="form-control" id="username"></input>
+              <br />
+              <input type="submit" class="btn btn-primary" value="Connexion" />
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="row" id="messageArea">
+        <!-- sidebar -->
+        <div class="col-md-4">
+          <div class="well">
+            <h3>Online Users</h3>
+            <ul class="list-group" id="users"></ul>
+          </div>
+        </div>
+
+     <!-- main chat area -->
+        <div class="col-md-8">
+          <div class="chat" id='chat'>
+            <form id="messageForm">
+              <div class="form-group">
+                <label>Entrez un message</label>
+                <textarea class="form-control" id="message"></textarea>
+                <br />
+                <input type="submit" class="btn btn-primary" value="Envoyer" />
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+<script>
+  $(function(){
+  const socket = io();
+
+  const userFormArea = $('#userFormArea');
+  const userForm = $('#userForm');//formulaire
+  const username = $('#username'); //input
+  const users = $('#users');
+
+  const messageArea = $('#messageArea');
+  const messageForm = $('#messageForm');
+  const message = $('#message');
+  const chat = $('#chat');
+
+
+//Dès que le formulaire est soumis, on émet l'évènement newUser pour le serveur
+  userForm.submit(function(e){
+    e.preventDefault();
+    socket.emit('newUser', username.val(), function(data){
+        if(data){
+          userFormArea.hide(); //Cacher le formulaire du username puis montrer                          
+          messageArea.show();  //la zone de texte pour saisir des messages 
+      }
+
+    });
+    username.val(''); //Efface la valeur du username
+
+  });
+
+  //Récupère chaque user et l'affiche dans une liste 
+  socket.on('getUsers', function(data){
+    let html = '';
+    for (let user of data){
+       html += `<li class="list-group-item"> ${user}</li>`;
+    }
+    users.html(html);
+  });
+
+  //Affiche un message à la déconnexion d'un user
+  socket.on('disconnected',(data) => { 
+    chat.append(`<div class="well"> <strong> ${data}</strong> is disconnected ! </div>`);
+  });
+
+  //Affiche un message à la connexion d'un user
+  socket.on('connected',(data) => {
+    chat.append(`<div class="well"> <strong> ${data}</strong> is connected ! </div>`)
+  });
+
+//Dès que le formulaire est soumis, on émet 'sendMessage' avec le message en données
+  messageForm.submit(function(e){
+    e.preventDefault();
+    socket.emit('sendMessage', message.val());
+    message.val(''); //On vide la zone de texte
+  });
+
+//A l'écoute de newMessage, on récupère l'objet dans data
+  socket.on('newMessage',function(data){
+    if(data.msg !== ''){
+      chat.append(`<div class="well"><strong> ${data.user} </strong>: ${data.msg} </div>`); //Affichage des messages
+    }
+
+    });
+  });
+</script>
+
+  </body>
+</html>
